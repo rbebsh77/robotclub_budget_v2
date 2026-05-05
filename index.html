@@ -227,23 +227,30 @@ var KEY = "cb10", curProj = null, selC = 0, editProjId = null, editPartId = null
 var FB_URL = "https://robotclub-budget-default-rtdb.firebaseio.com";
 
 function fbLoad(cb){
-  fetch(FB_URL + "/clubdata.json")
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if(d && Array.isArray(d.p)){
-        localStorage.setItem(KEY, JSON.stringify(d));
-      }
-      cb();
-    })
-    .catch(function(){ cb(); });
+  var done=false;
+  function finish(d){
+    if(done)return; done=true;
+    if(d && Array.isArray(d.p) && (d.p.length>0||d.t.length>0)){
+      localStorage.setItem(KEY,JSON.stringify(d));
+    }
+    cb();
+  }
+  // 5초 타임아웃
+  setTimeout(function(){finish(null);},5000);
+  fetch(FB_URL+"/budget_data.json",{cache:"no-store"})
+    .then(function(r){return r.json();})
+    .then(function(d){finish(d);})
+    .catch(function(){finish(null);});
 }
 
 function fbSave(d){
-  fetch(FB_URL + "/clubdata.json", {
-    method: "PUT",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(d)
-  }).catch(function(){});
+  try{
+    fetch(FB_URL+"/budget_data.json",{
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(d)
+    }).catch(function(){});
+  }catch(e){}
 }
 
 var CHEX = ["#2563eb","#16a34a","#dc2626","#d97706","#7c3aed","#db2777","#0891b2","#65a30d"];
@@ -800,7 +807,8 @@ document.addEventListener("DOMContentLoaded",function(){
   // Firebase에서 최신 데이터 로드 후 시작
   init();rdGrid(); // 로컬 먼저 즉시 표시
   fbLoad(function(){
-    init();rdGrid(); // Firebase 데이터로 갱신
+    init();rdGrid();
+    if(document.getElementById("pa").classList.contains("on"))rdAdmin();
   });
   document.getElementById("ti").addEventListener("click",function(){showPage("i");});
   document.getElementById("ta").addEventListener("click",function(){goAdmin();});
