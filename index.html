@@ -237,7 +237,7 @@ function fbLoad(cb){
   }
   // 5초 타임아웃
   setTimeout(function(){finish(null);},5000);
-  fetch(FB_URL+"/budget_data.json",{cache:"no-store"})
+  fetch(FB_URL+"/clubdata.json",{cache:"no-store"})
     .then(function(r){return r.json();})
     .then(function(d){finish(d);})
     .catch(function(){finish(null);});
@@ -245,7 +245,7 @@ function fbLoad(cb){
 
 function fbSave(d){
   try{
-    fetch(FB_URL+"/budget_data.json",{
+    fetch(FB_URL+"/clubdata.json",{
       method:"PUT",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify(d)
