@@ -226,16 +226,31 @@ var KEY = "cb10", curProj = null, selC = 0, editProjId = null, editPartId = null
 
 var FB_URL = "https://robotclub-budget-default-rtdb.firebaseio.com";
 
+function objToArr(obj){
+  if(!obj) return [];
+  if(Array.isArray(obj)) return obj;
+  return Object.keys(obj).sort().map(function(k){return obj[k];});
+}
 function fbLoad(cb){
   var done=false;
   function finish(d){
     if(done)return; done=true;
-    if(d && Array.isArray(d.p) && (d.p.length>0||d.t.length>0)){
-      localStorage.setItem(KEY,JSON.stringify(d));
-    }
+    try{
+      if(d && d!==null && typeof d==="object"){
+        // Firebase가 배열을 객체로 저장하므로 변환
+        var normalized={
+          p: objToArr(d.p),
+          t: objToArr(d.t)
+        };
+        if(!Array.isArray(normalized.p)) normalized.p=[];
+        if(!Array.isArray(normalized.t)) normalized.t=[];
+        if(normalized.p.length>0||normalized.t.length>0){
+          localStorage.setItem(KEY,JSON.stringify(normalized));
+        }
+      }
+    }catch(e){}
     cb();
   }
-  // 5초 타임아웃
   setTimeout(function(){finish(null);},5000);
   fetch(FB_URL+"/clubdata.json",{cache:"no-store"})
     .then(function(r){return r.json();})
@@ -257,18 +272,30 @@ var CHEX = ["#2563eb","#16a34a","#dc2626","#d97706","#7c3aed","#db2777","#0891b2
 var CRGB = ["D6E4FF","D6FFD6","FFD6D6","FFF0D6","ECD6FF","FFD6F0","D6F5FF","FFF9D6"];
 
 /* 데이터 */
-function ld(){try{return JSON.parse(localStorage.getItem(KEY))||{p:[],t:[]};}catch(e){return{p:[],t:[]};}}
+function ld(){
+  try{
+    var d=JSON.parse(localStorage.getItem(KEY));
+    if(!d||typeof d!=="object") return {p:[],t:[]};
+    if(!Array.isArray(d.p)) d.p=[];
+    if(!Array.isArray(d.t)) d.t=[];
+    return d;
+  }catch(e){return{p:[],t:[]};}
+}
 function sv(d){
+  if(!d) return;
+  if(!Array.isArray(d.p)) d.p=[];
+  if(!Array.isArray(d.t)) d.t=[];
   localStorage.setItem(KEY,JSON.stringify(d));
   fbSave(d);
 }
-
-
 function init(){
   var d=ld();
+  if(!d) d={p:[],t:[]};
+  if(!Array.isArray(d.p)) d.p=[];
+  if(!Array.isArray(d.t)) d.t=[];
   if(!d.p.find(function(x){return x.id==="com";})){
-    d.p.unshift({id:"com",name:"\uACF5\uC6A9\uBB3C\uD488",lead:"\uC804\uCCB4",desc:"\uBAA8\uB4E0 \uD300 \uACF5\uD1B5 \uBB3C\uD488",ci:7});
-    sv(d);
+    d.p.unshift({id:"com",name:"공용물품",lead:"전체",desc:"모든 팀 공통 물품",ci:7});
+    localStorage.setItem(KEY,JSON.stringify(d));
   }
   return d;
 }
@@ -350,6 +377,7 @@ function getCPVal(cpId){
 /* 프로젝트 그리드 */
 function rdGrid(){
   var d=init();
+  if(!d||!Array.isArray(d.p)){d={p:[],t:[]};init();}
   // 공용물품 분리
   var common=d.p.find(function(x){return x.id==="com";});
   var teams=d.p.filter(function(x){return x.id!=="com";});
