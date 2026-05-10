@@ -171,13 +171,15 @@ textarea{resize:vertical;min-height:64px}
   </div>
 
   <div id="vsp" style="display:none">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
       <button id="btn-back" class="btn bg2 sm">&#8592; 목록</button>
       <div>
         <div id="an" style="font-size:18px;font-weight:800"></div>
         <div id="al" style="font-size:12px;color:var(--m)"></div>
       </div>
     </div>
+    <div id="proj-desc" style="display:none;font-size:13px;color:var(--m);margin-bottom:4px;padding-left:2px"></div>
+    <div id="proj-members" style="display:none;font-size:12px;color:var(--m);margin-bottom:16px;padding-left:2px"></div>
 
     <div id="part-form" class="card" style="display:none">
       <div class="h" id="pf-title">부품 추가</div>
@@ -468,10 +470,11 @@ function rdGrid(){
       card.className="pc";
       card.style.cssText="border-color:"+c+"55";
       var ps=pnd?"<span style='color:#d97706'>미제출 "+pnd+"개</span>":"";
+      var membersHtml2=(p.members&&p.members.length>0)?"<div class='pm' style='margin-top:3px'>&#128101; "+p.members.slice(0,4).join(", ")+(p.members.length>4?" 외 "+(p.members.length-4)+"명":"")+"</div>":"";
       card.innerHTML=
         "<div class='pn'><span class='dot' style='background:"+c+"'></span>"+p.name+"</div>"+
-        "<div class='pd'>"+(p.desc||"소개 없음")+"</div>"+
-        "<div class='pm'>&#128100; "+p.lead+" &middot; 제출 "+sub.length+"개 "+ps+"</div>";
+        "<div class='pm'>&#128100; "+p.lead+" &middot; 제출 "+sub.length+"개 "+ps+"</div>"+
+        membersHtml2;
       // 수정/삭제 버튼 createElement로 직접 생성
       var actions=document.createElement("div");
       actions.className="proj-actions";
@@ -618,9 +621,19 @@ function openProj(id, member){
   anEl.appendChild(document.createTextNode(p.name));
   document.getElementById("an").style.color=c;
   var roleTag=member?
-    "<span style='background:#dbeafe;color:#1d4ed8;font-size:11px;padding:2px 7px;border-radius:20px;font-weight:700'>모둥원</span>":
+    "<span style='background:#dbeafe;color:#1d4ed8;font-size:11px;padding:2px 7px;border-radius:20px;font-weight:700'>모둠원</span>":
     "<span style='background:#f3f4f6;color:#6b7280;font-size:11px;padding:2px 7px;border-radius:20px;font-weight:700'>둘러보기</span>";
   document.getElementById("al").innerHTML=(isCommon?"공용 물품":"팀 대표: "+p.lead)+" "+roleTag;
+  var descEl=document.getElementById("proj-desc");
+  if(descEl){
+    if(!isCommon&&p.desc){descEl.textContent=p.desc;descEl.style.display="block";}
+    else{descEl.textContent="";descEl.style.display="none";}
+  }
+  var membEl=document.getElementById("proj-members");
+  if(membEl){
+    if(!isCommon&&p.members&&p.members.length>0){membEl.textContent="팀원: "+p.members.join(", ");membEl.style.display="block";}
+    else{membEl.style.display="none";}
+  }
   editPartId=null;
   showPartForm(false);
   rdParts();
@@ -667,7 +680,7 @@ function showPartForm(v){
   document.getElementById("part-form").style.display=v?"block":"none";
 }
 function showAddPart(){
-  if(!isMember){toast("모둥원만 추가할 수 있어요","warn");return;}
+  if(!isMember){toast("모둠원만 추가할 수 있어요","warn");return;}
   editPartId=null;
   document.getElementById("pf-title").textContent="부품 추가";
   document.getElementById("btn-addpart").textContent="추가 +";
@@ -676,7 +689,7 @@ function showAddPart(){
   document.getElementById("ptn").focus();
 }
 function showEditPart(id){
-  if(!isMember){toast("모둥원만 수정할 수 있어요","warn");return;}
+  if(!isMember){toast("모둠원만 수정할 수 있어요","warn");return;}
   var d=ld(),t=d.t.find(function(x){return x.id===id;});
   if(!t)return;
   editPartId=id;
@@ -693,7 +706,7 @@ function showEditPart(id){
 function cancelPartForm(){editPartId=null;showPartForm(false);}
 
 function savePart(){
-  if(!isMember){toast("모둥원만 추가/수정할 수 있어요","warn");return;}
+  if(!isMember){toast("모둠원만 추가/수정할 수 있어요","warn");return;}
   var n=document.getElementById("ptn").value.trim();
   var u=document.getElementById("ptu").value.trim();
   var q=parseInt(document.getElementById("ptq").value)||1;
@@ -719,7 +732,7 @@ function savePart(){
   }
 }
 function delPart(id){
-  if(!isMember){toast("모둥원만 삭제할 수 있어요","warn");return;}
+  if(!isMember){toast("모둠원만 삭제할 수 있어요","warn");return;}
   var d=ld(),t=d.t.find(function(x){return x.id===id;});
   if(!t)return;
   if(t.dn){toast("구매완료 항목은 삭제할 수 없어요","warn");return;}
@@ -779,7 +792,7 @@ function rdParts(){
   sb.textContent=un.length+"개 제출하기";
 }
 function subParts(){
-  if(!isMember){toast("모둥원만 제출할 수 있어요","warn");return;}
+  if(!isMember){toast("모둠원만 제출할 수 있어요","warn");return;}
   var d=ld(),n=0;
   d.t.forEach(function(t){if(t.pid===curProj&&!t.sub){t.sub=true;n++;}});
   if(!n){toast("제출할 부품이 없어요","warn");return;}
@@ -840,10 +853,7 @@ function rdAdmin(){
       "</tr></tfoot></table>":
       "<div style='background:#fff;padding:14px 18px;font-size:13px;color:var(--m)'>제출된 부품이 없어요</div>";
     html+="<div class='pbl'>"+
-      "<div class='ph' style='background:"+c+"'>"+
-      "<div><div class='phn'>"+(isCommon?"&#128295; ":"&#9679; ")+p.name+"</div>"+
-      "<div class='phs'>&#128100; "+p.lead+(p.desc?" &middot; "+p.desc:"")+ps+"</div></div>"+
-      "<div class='pht'>"+tot.toLocaleString()+"원</div></div>"+
+      "<div class='ph' style='background:"+c+";flex-direction:column;align-items:flex-start'>"+"<div class='phn'>"+(isCommon?"&#128295; ":"&#9679; ")+p.name+"</div>"+"<div class='phs' style='margin-top:4px'>&#128100; "+p.lead+ps+"</div>"+(!isCommon&&p.desc?"<div class='phs' style='margin-top:2px;opacity:.9;white-space:normal;word-break:break-all'>"+p.desc+"</div>":"")+(!isCommon&&p.members&&p.members.length>0?"<div class='phs' style='margin-top:2px;opacity:.85'>&#128101; "+p.members.join(", ")+"</div>":"")+"<div style='margin-top:8px;font-size:18px;font-weight:800'>"+tot.toLocaleString()+"원</div>"+"</div>"
       tbl+"</div>";
   }
   document.getElementById("ac").innerHTML=html||"<div class='card'><div class='emp'><div class='ei'>&#128203;</div><div class='et'>프로젝트가 없어요</div></div></div>";
