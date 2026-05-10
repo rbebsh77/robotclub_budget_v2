@@ -100,12 +100,33 @@ textarea{resize:vertical;min-height:64px}
     </div>
   </div>
 </div>
+<div id="role-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:320px;margin:20px;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <div style="font-size:16px;font-weight:800;margin-bottom:6px">어떤 자격으로 입장하나요?</div>
+    <div style="font-size:13px;color:var(--m);margin-bottom:20px">모둠원은 부품 추가/수정이 가능해요</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button id="role-member" class="btn bp" style="justify-content:center;padding:12px">&#128101; 모둠원으로 입장</button>
+      <button id="role-guest" class="btn bg2" style="justify-content:center;padding:12px">&#128065; 둘러보기</button>
+      <button id="role-cancel" class="btn bg2 sm" style="justify-content:center;margin-top:4px">취소</button>
+    </div>
+  </div>
+</div>
+<div id="pwm2" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:700;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:320px;margin:20px;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <div id="pwm2-msg" style="font-size:14px;font-weight:600;margin-bottom:14px"></div>
+    <input id="pwm2-inp" type="text" placeholder="비밀번호 입력" style="margin-bottom:14px" oninput="this.value=this.value.replace(/[^A-Za-z0-9]/g,'')" autocomplete="off">
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="pwm2-cancel" class="btn bg2 sm">취소</button>
+      <button id="pwm2-ok" class="btn bp sm">확인</button>
+    </div>
+  </div>
+</div>
 <div id="cfm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:320px;margin:20px;box-shadow:0 20px 60px rgba(0,0,0,.2)">
     <div id="cfm-msg" style="font-size:14px;font-weight:600;margin-bottom:18px;line-height:1.5"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button id="cfm-no" class="btn bg2 sm">취소</button>
-      <button id="cfm-yes" class="btn" style="background:#b91c1c;color:#fff;font-size:12px;padding:5px 12px">삭제</button>
+      <button id="cfm-yes" class="btn" style="background:#1d4ed8;color:#fff;font-size:12px;padding:5px 12px">예</button>
     </div>
   </div>
 </div>
@@ -128,15 +149,19 @@ textarea{resize:vertical;min-height:64px}
       <div class="h" id="nf-title">새 프로젝트 등록</div>
       <div class="warn-box">&#9888;&#65039; 다른 팀 프로젝트를 함부로 수정하지 말아주세요</div>
       <div class="r2">
-        <div><label>프로젝트 이름 *</label><input id="nn" placeholder="예: 자율주행 RC카"></div>
-        <div><label>팀 대표자 *</label><input id="nl" placeholder="예: 김민준"></div>
+        <div><label>프로젝트 이름 *</label><input id="nn" placeholder="예: 로봇 팔"></div>
+        <div><label>팀 대표자 *</label><input id="nl" placeholder="예: 김경희"></div>
       </div>
       <div style="margin-bottom:10px">
         <label>소개</label><textarea id="nd" placeholder="어떤 프로젝트인지 설명해주세요"></textarea>
       </div>
+      <div class="r2" style="margin-bottom:10px">
+        <div><label>프로젝트 비밀번호 *</label><input id="np-pw" type="text" placeholder="수정/삭제 비밀번호 (영문+숫자)" pattern="[A-Za-z0-9]+" oninput="this.value=this.value.replace(/[^A-Za-z0-9]/g,'')" autocomplete="off"></div>
+        <div><label>팀 색깔</label><div id="cp" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div></div>
+      </div>
       <div style="margin-bottom:14px">
-        <label>팀 색깔</label>
-        <div id="cp" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
+        <label>모둠원 <span style="font-size:11px;color:var(--m);font-weight:400">(학번 이름, 한 줄에 한 명 - 모두 적기)</span></label>
+        <textarea id="np-members" placeholder="예)&#10;20801 김경희&#10;20802 고황산&#10;20803 김로봇" style="min-height:80px"></textarea>
       </div>
       <div style="display:flex;gap:8px">
         <button id="btn-mkproj" class="btn bp">만들기</button>
@@ -221,6 +246,7 @@ textarea{resize:vertical;min-height:64px}
 </div>
 
 <script>
+
 // 관리자: URL에 ?admin=1847 파라미터로 접근
 var KEY = "cb10", curProj = null, selC = 0, editProjId = null, editPartId = null;
 
@@ -237,7 +263,7 @@ function fbLoad(cb){
     if(done)return; done=true;
     try{
       if(d && d!==null && typeof d==="object"){
-        // Firebase가 배열을 객체로 저장하므로 변환
+        if(d.admin_pw) ADMIN_PW=String(d.admin_pw);
         var normalized={
           p: objToArr(d.p),
           t: objToArr(d.t)
@@ -319,7 +345,11 @@ function goAdmin(){
   setTimeout(function(){document.getElementById("pwi").focus();},100);
 }
 function chkPw(){
-  if(document.getElementById("pwi").value==="1847"){
+  var v=document.getElementById("pwi").value;
+  if(ADMIN_PW&&v===ADMIN_PW){
+    adminOn=true;clsPw();showPage("a");
+  }else if(!ADMIN_PW&&v==="1847"){
+    // Firebase 로드 전 fallback
     adminOn=true;clsPw();showPage("a");
   }else{
     document.getElementById("pwe").style.display="block";
@@ -332,11 +362,29 @@ function clsPw(){
   document.getElementById("pwe").style.display="none";
 }
 
-function customConfirm(msg, onYes){
+function pwModal(msg, cb){
+  var m=document.getElementById("pwm2");
+  document.getElementById("pwm2-msg").textContent=msg;
+  document.getElementById("pwm2-inp").value="";
+  m.style.display="flex";
+  setTimeout(function(){document.getElementById("pwm2-inp").focus();},100);
+  function cleanup(){m.style.display="none";}
+  document.getElementById("pwm2-ok").onclick=function(){
+    cleanup();cb(document.getElementById("pwm2-inp").value);
+  };
+  document.getElementById("pwm2-cancel").onclick=function(){cleanup();};
+  document.getElementById("pwm2-inp").onkeydown=function(e){
+    if(e.key==="Enter"){cleanup();cb(document.getElementById("pwm2-inp").value);}
+    if(e.key==="Escape"){cleanup();}
+  };
+}
+function customConfirm(msg, onYes, isDanger){
   var m=document.getElementById("cfm");
   document.getElementById("cfm-msg").textContent=msg;
-  m.style.display="flex";
   var yBtn=document.getElementById("cfm-yes");
+  yBtn.style.background=isDanger?"#b91c1c":"#1d4ed8";
+  yBtn.textContent=isDanger?"삭제":"예";
+  m.style.display="flex";
   var nBtn=document.getElementById("cfm-no");
   function cleanup(){m.style.display="none";yBtn.onclick=null;nBtn.onclick=null;}
   yBtn.onclick=function(){cleanup();onYes();};
@@ -454,12 +502,23 @@ function showF(v){
   document.getElementById("nf").style.display=v?"block":"none";
   document.getElementById("nf-title").textContent="새 프로젝트 등록";
   document.getElementById("btn-mkproj").textContent="만들기";
-  ["nn","nl","nd"].forEach(function(id){document.getElementById(id).value="";});
+  ["nn","nl","nd","np-pw","np-members"].forEach(function(id){document.getElementById(id).value="";});
   if(v){selC=0;mkCP("cp",0);}
 }
 function showEditProj(id){
   var d=ld(),p=d.p.find(function(x){return x.id===id;});
   if(!p)return;
+  if(p.pw){
+    pwModal("프로젝트 비밀번호를 입력하세요",function(inputPw){
+      if(inputPw!==p.pw&&inputPw!==ADMIN_PW){toast("비밀번호가 틀렸어요","warn");return;}
+      openEditForm(p);
+    });
+    return;
+  }
+  openEditForm(p);
+}
+function openEditForm(p){
+  var id=p.id;
   editProjId=id;
   document.getElementById("nf").style.display="block";
   document.getElementById("nf-title").textContent="프로젝트 수정";
@@ -467,6 +526,8 @@ function showEditProj(id){
   document.getElementById("nn").value=p.name;
   document.getElementById("nl").value=p.lead;
   document.getElementById("nd").value=p.desc||"";
+  document.getElementById("np-pw").value=p.pw||"";
+  document.getElementById("np-members").value=(p.members||[]).join("\n");
   mkCP("cp",p.ci);
   selC=p.ci;
   document.getElementById("nf").scrollIntoView({behavior:"smooth"});
@@ -475,21 +536,34 @@ function mkProj(){
   var n=document.getElementById("nn").value.trim();
   var l=document.getElementById("nl").value.trim();
   var d2=document.getElementById("nd").value.trim();
+  var pw=document.getElementById("np-pw").value.trim();
+  var membersRaw=document.getElementById("np-members").value.trim();
   if(!n||!l){toast("이름과 대표자를 입력해주세요","warn");return;}
+  if(!pw){toast("프로젝트 비밀번호를 설정해주세요","warn");return;}
   var d=ld();
   var ci=getCPVal("cp");
+  // members parsing
+  var members=membersRaw?membersRaw.split("\n").map(function(s){return s.trim();}).filter(function(s){return s.length>0;}).slice(0,20):[];
   if(editProjId){
-    // 수정
     var p=d.p.find(function(x){return x.id===editProjId;});
     if(!p)return;
-    p.name=n;p.lead=l;p.desc=d2;p.ci=ci;
-    sv(d);showF(0);rdGrid();
-    toast("프로젝트가 수정됐어요");
+    function applyEdit(newPw){
+      p.name=n;p.lead=l;p.desc=d2;p.ci=ci;p.pw=newPw;p.members=members;
+      sv(d);showF(0);rdGrid();
+      toast("프로젝트가 수정됐어요");
+    }
+    if(p.pw&&pw!==p.pw){
+      // 비번이 변경됐으면 확인
+      customConfirm("비밀번호를 ["+pw+"]으로 변경할까요?",function(){
+        applyEdit(pw);
+      });
+    } else {
+      applyEdit(pw);
+    }
   } else {
-    // 신규
     if(d.p.find(function(x){return x.name===n&&x.id!=="com";})){toast("같은 이름이 있어요","warn");return;}
-    d.p.push({id:Date.now().toString(),name:n,lead:l,desc:d2,ci:ci});
-    sv(d);["nn","nl","nd"].forEach(function(id){document.getElementById(id).value="";});
+    d.p.push({id:Date.now().toString(),name:n,lead:l,desc:d2,ci:ci,pw:pw,members:members});
+    sv(d);["nn","nl","nd","np-pw","np-members"].forEach(function(id){document.getElementById(id).value="";});
     showF(0);rdGrid();
     toast("프로젝트가 만들어졌어요!");
   }
@@ -498,36 +572,87 @@ function delProj(id){
   var d=ld(),p=d.p.find(function(x){return x.id===id;});
   if(!p)return;
   var cnt=d.t.filter(function(x){return x.pid===id;}).length;
-  var msg="["+p.name+"] 프로젝트를 삭제할까요?"+(cnt?"\n(부품 "+cnt+"개도 함께 삭제됩니다)":"");
-  customConfirm(msg,function(){
-    d.p=d.p.filter(function(x){return x.id!==id;});
-    d.t=d.t.filter(function(x){return x.pid!==id;});
-    sv(d);
-    if(curProj===id){
-      curProj=null;
-      document.getElementById("vss").style.display="block";
-      document.getElementById("vsp").style.display="none";
-    }
-    rdGrid();
-    toast("삭제됐어요");
-  });
+  function doDelete(){
+    var msg="["+p.name+"] 프로젝트를 삭제할까요?"+(cnt?"\n부품 "+cnt+"개도 함께 삭제됩니다":"");
+    customConfirm(msg,function(){
+      var d2=ld();
+      d2.p=d2.p.filter(function(x){return x.id!==id;});
+      d2.t=d2.t.filter(function(x){return x.pid!==id;});
+      sv(d2);
+      if(curProj===id){
+        curProj=null;
+        document.getElementById("vss").style.display="block";
+        document.getElementById("vsp").style.display="none";
+      }
+      rdGrid();
+      toast("삭제됐어요");
+    });
+  }
+  if(id!=="com"&&p.pw){
+    pwModal("프로젝트 비밀번호를 입력하세요",function(inputPw){
+      if(inputPw===p.pw||inputPw===ADMIN_PW) doDelete();
+      else toast("비밀번호가 틀렸어요","warn");
+    });
+  } else {
+    doDelete();
+  }
 }
 
 /* 프로젝트 선택 */
-function selProj(id){
+function openProj(id, member){
   var d=ld(),p=d.p.find(function(x){return x.id===id;});
   if(!p)return;
-  curProj=id;
+  curProj=id; isMember=member;
   var isCommon=(id==="com");
   var c=isCommon?"#65a30d":(CHEX[p.ci]||CHEX[0]);
   document.getElementById("vss").style.display="none";
   document.getElementById("vsp").style.display="block";
-  var anEl=document.getElementById("an");anEl.textContent="";if(isCommon){var sp=document.createElement("span");sp.textContent="🔧";anEl.appendChild(sp);anEl.appendChild(document.createTextNode(" "));}anEl.appendChild(document.createTextNode(p.name));
+  var anEl=document.getElementById("an");
+  anEl.textContent="";
+  if(isCommon){
+    var sp=document.createElement("span");
+    sp.textContent="🔧";
+    anEl.appendChild(sp);
+    anEl.appendChild(document.createTextNode(" "));
+  }
+  anEl.appendChild(document.createTextNode(p.name));
   document.getElementById("an").style.color=c;
-  document.getElementById("al").textContent=(isCommon?"공용 물품":"팀 대표: "+p.lead);
+  var roleTag=member?
+    "<span style='background:#dbeafe;color:#1d4ed8;font-size:11px;padding:2px 7px;border-radius:20px;font-weight:700'>모둥원</span>":
+    "<span style='background:#f3f4f6;color:#6b7280;font-size:11px;padding:2px 7px;border-radius:20px;font-weight:700'>둘러보기</span>";
+  document.getElementById("al").innerHTML=(isCommon?"공용 물품":"팀 대표: "+p.lead)+" "+roleTag;
   editPartId=null;
   showPartForm(false);
   rdParts();
+}
+function selProj(id){
+  var d=ld(),p=d.p.find(function(x){return x.id===id;});
+  if(!p)return;
+  if(id==="com"){openProj(id,true);return;}
+  showRoleModal(id);
+}
+function showRoleModal(id){
+  var m=document.getElementById("role-modal");
+  m.style.display="flex";
+  document.getElementById("role-member").onclick=function(){
+    m.style.display="none";
+    var d2=ld(),p2=d2.p.find(function(x){return x.id===id;});
+    if(p2&&p2.pw){
+      pwModal("모둥 비밀번호를 입력하세요",function(inputPw){
+        if(inputPw===p2.pw||inputPw===ADMIN_PW){openProj(id,true);}
+        else toast("비밀번호가 틀렸어요","warn");
+      });
+    } else {
+      openProj(id,true);
+    }
+  };
+  document.getElementById("role-guest").onclick=function(){
+    m.style.display="none";
+    openProj(id,false);
+  };
+  document.getElementById("role-cancel").onclick=function(){
+    m.style.display="none";
+  };
 }
 function goBack(){
   curProj=null;editPartId=null;
@@ -542,6 +667,7 @@ function showPartForm(v){
   document.getElementById("part-form").style.display=v?"block":"none";
 }
 function showAddPart(){
+  if(!isMember){toast("모둥원만 추가할 수 있어요","warn");return;}
   editPartId=null;
   document.getElementById("pf-title").textContent="부품 추가";
   document.getElementById("btn-addpart").textContent="추가 +";
@@ -550,6 +676,7 @@ function showAddPart(){
   document.getElementById("ptn").focus();
 }
 function showEditPart(id){
+  if(!isMember){toast("모둥원만 수정할 수 있어요","warn");return;}
   var d=ld(),t=d.t.find(function(x){return x.id===id;});
   if(!t)return;
   editPartId=id;
@@ -566,6 +693,7 @@ function showEditPart(id){
 function cancelPartForm(){editPartId=null;showPartForm(false);}
 
 function savePart(){
+  if(!isMember){toast("모둥원만 추가/수정할 수 있어요","warn");return;}
   var n=document.getElementById("ptn").value.trim();
   var u=document.getElementById("ptu").value.trim();
   var q=parseInt(document.getElementById("ptq").value)||1;
@@ -591,6 +719,7 @@ function savePart(){
   }
 }
 function delPart(id){
+  if(!isMember){toast("모둥원만 삭제할 수 있어요","warn");return;}
   var d=ld(),t=d.t.find(function(x){return x.id===id;});
   if(!t)return;
   if(t.dn){toast("구매완료 항목은 삭제할 수 없어요","warn");return;}
@@ -614,11 +743,12 @@ function rdParts(){
   var tot=0,html="";
   for(var i=0;i<ts.length;i++){
     var t=ts[i],s=t.qty*t.price;tot+=s;
-    var badge=t.dn?"<span class='bk vd'>구매완료</span>":t.sub?"<span class='bk vs'>제출됨</span> <button class='btn-sm-act' data-unsub='"+t.id+"' style='font-size:10px;padding:2px 6px'>취소</button>":"<span class='bk vp'>미제출</span>";
+    var unsubBtn=isMember?"<button class='btn-sm-act' data-unsub='"+t.id+"' style='font-size:10px;padding:2px 6px'>취소</button>":"";
+    var badge=t.dn?"<span class='bk vd'>구매완료</span>":t.sub?"<span class='bk vs'>제출됨</span> "+unsubBtn:"<span class='bk vp'>미제출</span>";
     var st=t.dn?"opacity:.45;text-decoration:line-through":"";
     var lk=t.link?"<a class='la' href='"+t.link+"' target='_blank'>링크</a>":"-";
-    var editBtn=t.dn?"":"<button class='btn-sm-act edit-act' data-eid='"+t.id+"'>수정</button>";
-    var delBtn="<button class='btn-sm-act del-act' data-did='"+t.id+"'>삭제</button>";
+    var editBtn=(isMember&&!t.dn)?"<button class='btn-sm-act edit-act' data-eid='"+t.id+"'>수정</button>":"";
+    var delBtn=isMember?"<button class='btn-sm-act del-act' data-did='"+t.id+"'>삭제</button>":"";
     html+="<tr style='"+st+"'>"+
       "<td data-label='#' style='color:var(--m);font-size:11px'>"+(i+1)+"</td>"+
       "<td data-label='부품명'><strong>"+t.name+"</strong><br><span style='font-size:11px;color:var(--m)'>"+(t.usage||"")+"</span></td>"+
@@ -643,11 +773,13 @@ function rdParts(){
   document.getElementById("ptt").textContent=tot.toLocaleString()+"원";
   document.getElementById("tl").textContent="총 "+ts.length+"개 \u00B7 "+tot.toLocaleString()+"원";
   var un=ts.filter(function(x){return !x.sub;});
-  sw.style.display="block";
-  sb.style.display=un.length?"inline-flex":"none";
+  sw.style.display=isMember?"block":"none";
+  document.getElementById("btn-showaddpart").style.display=isMember?"inline-flex":"none";
+  sb.style.display=(isMember&&un.length)?"inline-flex":"none";
   sb.textContent=un.length+"개 제출하기";
 }
 function subParts(){
+  if(!isMember){toast("모둥원만 제출할 수 있어요","warn");return;}
   var d=ld(),n=0;
   d.t.forEach(function(t){if(t.pid===curProj&&!t.sub){t.sub=true;n++;}});
   if(!n){toast("제출할 부품이 없어요","warn");return;}
@@ -736,7 +868,7 @@ function clrAll(){
   customConfirm("정말 모든 데이터를 초기화할까요? 되돌릴 수 없어요.",function(){
     localStorage.removeItem(KEY);rdAdmin();rdGrid();
     toast("초기화 완료");
-  });
+  },true);
 }
 
 /* 엑셀 */
@@ -853,7 +985,7 @@ document.addEventListener("DOMContentLoaded",function(){
   document.getElementById("sbb").addEventListener("click",subParts);
   document.getElementById("btn-dlxls").addEventListener("click",dlXls);
   document.getElementById("btn-clrall").addEventListener("click",clrAll);
-});;
+});
 
 </script>
 </body>
